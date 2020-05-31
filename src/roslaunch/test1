@@ -1,0 +1,4 @@
+#!/bin/bash
+#source /home/pi/src/roslaunch/ros_source
+full_ip=$(hostname -I)
+echo ${full_ip:0:15}
