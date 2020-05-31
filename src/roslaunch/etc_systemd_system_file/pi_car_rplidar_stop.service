@@ -1,0 +1,10 @@
+[Unit]
+Requires=pigpiod.service
+After=pipgiod.service NetworkManager.service time-sync.target roscore.service pi_car_rplidar.service
+[Service]
+Type=oneshot
+User=pi                         
+ExecStart=/home/pi/src/roslaunch/pi_car_rplidar_stop
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,3 @@
+#!/bin/bash
+source /home/pi/src/roslaunch/ros_source
+/home/pi/ros_project_dependencies_ws/devel/lib/pi_car_imu/pi_car_imu 

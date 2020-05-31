@@ -1,0 +1,5 @@
+#!/bin/bash
+source /home/pi/src/roslaunch/ros_source
+rosservice call /stop_motor
+#PID=$!
+#wait “$PID”

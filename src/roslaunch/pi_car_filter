@@ -1,0 +1,4 @@
+#!/bin/bash
+source /home/pi/src/roslaunch/ros_source
+rosrun imu_filter_madgwick imu_filter_node _publish_tf:=true _fixed_frame:="base_link"
+ 

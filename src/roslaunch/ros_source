@@ -1,0 +1,7 @@
+#!/bin/bash
+source /opt/ros/melodic/setup.bash
+source /home/pi/catkin_ws/devel/setup.bash
+source /home/pi/ros_project_dependencies_ws/devel/setup.bash 
+export ROS_MASTER_URI=http://192.168.178.61:11311
+export ROS_IP=192.168.178.64
+export ROS_HOME=/home/pi/.ros
