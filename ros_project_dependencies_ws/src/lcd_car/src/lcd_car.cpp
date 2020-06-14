@@ -44,11 +44,10 @@ FontxFile fx16M[2];
 #define TOP_MAG 110
 #define TOP_SCAN 130
 #define TOP_CMD 150
-#define TOP_MOTOR 170
 #define STATIC_LEFT 5
 #define STATIC_RIGHT 120
 #define VARIABLE_LEFT 130
-#define VARIABLE_RIGHT 310
+#define VARIABLE_RIGHT 230
 
 struct  LcdWindow* mainWindow;
 
@@ -59,7 +58,6 @@ struct LcdWindow* wsIMU;
 struct LcdWindow* wsMag;
 struct LcdWindow* wsScan;
 struct LcdWindow* wsCMD;
-struct LcdWindow* wsMotor;
 
 struct LcdWindow* wvLeftSpeed;
 struct LcdWindow* wvRightSpeed;
@@ -68,7 +66,6 @@ struct LcdWindow* wvIMU;
 struct LcdWindow* wvMag;
 struct LcdWindow* wvScan;
 struct LcdWindow* wvCMD;
-struct LcdWindow* wvMotor;
 
 
 
@@ -91,79 +88,50 @@ void velocity_callback(const geometry_msgs::Twist::ConstPtr& msg)
 {
         // ROS callback on message received
         char message[256];
-        snprintf(message,sizeof(message),"lin %0.2f, ang %0.2f",msg->linear.x,msg->angular.z);
 
+        snprintf(message,sizeof(message),"Speed %0.2f, angle %0.2f",msg->linear.x,msg->angular.z);
         lcdDrawUTF8String(wvCMD,fx16G, 0,0, message, WHITE);
+        //message_timeout.setPeriod(ros::Duration(MESSAGE_TIMOUT),true);  // reset no message timeout
+        //motor_control(msg->linear.x,msg->angular.z);
 }
 
 void motor_callback(const std_msgs::Bool::ConstPtr& msg)
 {
         // ROS callback on message received
-        lcdFillScreen( wvMotor, BLACK);
-        if(msg->data) {
-                lcdDrawUTF8String(wvMotor,fx16G, 0,0, "On", WHITE);
-        }
-        else {
-                lcdDrawUTF8String(wvMotor,fx16G, 0,0, "Off", WHITE);
-        }
+        //motor_on=msg->data;
 }
 
 void left_speed_callback(const std_msgs::Float32::ConstPtr& msg)
 {
-// ROS callback on message received
-        char message[256];
-        snprintf(message,sizeof(message),"%0.2f",msg->data);
-        //lcdFillScreen( wvLeftSpeed, BLACK);
-
-        lcdDrawUTF8String(wvLeftSpeed,fx16G, 0,0, message, WHITE);
-
+        // ROS callback on message received
+        //motor_on=msg->data;
 }
 
 void right_speed_callback(const std_msgs::Float32::ConstPtr& msg)
 {
         // ROS callback on message received
-        char message[256];
-        snprintf(message,sizeof(message),"%0.2f",msg->data);
-        lcdDrawUTF8String(wvRightSpeed,fx16G, 0,0, message, WHITE);
+        //motor_on=msg->data;
 }
 
 void imu_callback(const sensor_msgs::Imu::ConstPtr& msg)
 {
         // ROS callback on message received
-        char message[256];
-        snprintf(message,sizeof(message),"x %0.1f, y %0.1f, z %0.1f",msg->angular_velocity.x,msg->angular_velocity.y,msg->angular_velocity.z);
-        lcdDrawUTF8String(wvIMU,fx16G, 0,0, message, WHITE);
+        //motor_on=msg->data;
 }
 
 void imu_raw_callback(const sensor_msgs::Imu::ConstPtr& msg)
 {
         // ROS callback on message received
-        char message[256];
-        snprintf(message,sizeof(message),"x %3.1f, y %2.1f, z %1.1f",msg->angular_velocity.x,msg->angular_velocity.y,msg->angular_velocity.z);
-        //lcdFillScreen( wvIMURaw, BLACK);
-
-        lcdDrawUTF8String(wvIMURaw,fx16G, 0,0, message, WHITE);
-
+        //motor_on=msg->data;
 }
 
 void mag_callback(const sensor_msgs::MagneticField::ConstPtr& msg)
 {
         // ROS callback on message received
-        char message[256];
-        snprintf(message,sizeof(message),"x %3.0f, y %2.0f, z %1.0f",msg->magnetic_field.x,msg->magnetic_field.y,msg->magnetic_field.z);
-        //lcdFillScreen( wvMag, BLACK);
-
-        lcdDrawUTF8String(wvMag,fx16G, 0,0, message, WHITE);
-
-
-        //msg.magnetic_field.x
+        //motor_on=msg->data;
 }
 
-void SigintHandler(int sig)
-{
-        lcdFillScreen( mainWindow, BLACK);
-        ros::shutdown();
-}
+
 void setup_screen()
 {
         // Set-up basic screen info
@@ -180,7 +148,6 @@ void setup_screen()
         lcdSetup();
 
         lcdFillScreen( mainWindow, BLACK);
-        lcdSetFontFill(BLACK);
         colour = WHITE;
 
         lcdSetFontDirection(DIRECTION0);
@@ -192,7 +159,6 @@ void setup_screen()
         wsMag=lcdWindowInit(STATIC_LEFT,TOP_MAG,STATIC_RIGHT-STATIC_LEFT,STD_HEIGHT);
         wsScan=lcdWindowInit(STATIC_LEFT,TOP_SCAN,STATIC_RIGHT-STATIC_LEFT,STD_HEIGHT);
         wsCMD=lcdWindowInit(STATIC_LEFT,TOP_CMD,STATIC_RIGHT-STATIC_LEFT,STD_HEIGHT);
-        wsMotor=lcdWindowInit(STATIC_LEFT,TOP_MOTOR,STATIC_RIGHT-STATIC_LEFT,STD_HEIGHT);
 
         wvLeftSpeed=lcdWindowInit(VARIABLE_LEFT,TOP_LEFT_SPEED,VARIABLE_RIGHT-VARIABLE_LEFT,STD_HEIGHT);
         wvRightSpeed=lcdWindowInit(VARIABLE_LEFT,TOP_RIGHT_SPEED,VARIABLE_RIGHT-VARIABLE_LEFT,STD_HEIGHT);
@@ -201,7 +167,6 @@ void setup_screen()
         wvMag=lcdWindowInit(VARIABLE_LEFT,TOP_MAG,VARIABLE_RIGHT-VARIABLE_LEFT,STD_HEIGHT);
         wvScan=lcdWindowInit(VARIABLE_LEFT,TOP_SCAN,VARIABLE_RIGHT-VARIABLE_LEFT,STD_HEIGHT);
         wvCMD=lcdWindowInit(VARIABLE_LEFT,TOP_CMD,VARIABLE_RIGHT-VARIABLE_LEFT,STD_HEIGHT);
-        wvMotor=lcdWindowInit(VARIABLE_LEFT,TOP_MOTOR,VARIABLE_RIGHT-VARIABLE_LEFT,STD_HEIGHT);
 
         lcdDrawUTF8String(wsLeftSpeed,fx16G, 0,0, "Left speed", WHITE);
         lcdDrawUTF8String(wsRightSpeed,fx16G, 0,0, "Right speed", WHITE);
@@ -210,7 +175,7 @@ void setup_screen()
         lcdDrawUTF8String(wsMag,fx16G, 0,0, "Magnetic", WHITE);
         lcdDrawUTF8String(wsScan,fx16G, 0,0, "Laser scan", WHITE);
         lcdDrawUTF8String(wsCMD,fx16G, 0,0, "Command", WHITE);
-        lcdDrawUTF8String(wsMotor,fx16G, 0,0, "Motor", WHITE);
+
 
 }
 
@@ -219,7 +184,6 @@ int main (int argc, char **argv)
 
         ros::init(argc, argv, "pi_car_lcd", ros::init_options::NoSigintHandler);
         ROS_INFO("Started Pi Car LCD");
-        signal(SIGINT, SigintHandler);
         ros::NodeHandle nh;
 
         // Set up ROS
@@ -229,6 +193,28 @@ int main (int argc, char **argv)
         unsigned char utf8[64];
         setup_screen();
 
+
+        /*strncpy((char *)utf8, "10,10", sizeof(utf8));
+           lcdDrawUTF8String(mainWindow,fx16G, 10,10, utf8, colour);
+
+           strncpy((char *)utf8, "10,200", sizeof(utf8));
+           lcdDrawUTF8String(mainWindow,fx16G, 10,200, utf8, colour);
+
+           strncpy((char *)utf8, "100,100", sizeof(utf8));
+           lcdDrawUTF8String(mainWindow,fx16G, 100,100, utf8, colour);
+
+           strncpy((char *)utf8, "100,200", sizeof(utf8));
+           lcdDrawUTF8String(mainWindow,fx16G, 100,200, utf8, colour);
+
+           lcdDrawPixel(mainWindow,310,230,RED);
+
+           struct LcdWindow* subWindow = lcdWindowInit(100,100,95,50);
+           lcdDrawLine(subWindow,1,1,200,200,BLUE);
+           strncpy((char *)utf8, "subsuub123456789012345678901234567890", sizeof(utf8));
+           lcdDrawUTF8String(subWindow,fx16G, 10,10, utf8, GREEN);
+           //lcdDrawFillRect(mainWindow,0,0,50,51,CYAN);
+           lcdDrawFillRect(mainWindow,0,0,50,51,GREEN);*/
+
         ros::Subscriber sub_velocity = nh.subscribe(TOPIC_CMD_VEL,1,velocity_callback);
         ros::Subscriber sub_motor = nh.subscribe(TOPIC_MOTOR,1,motor_callback);
         ros::Subscriber sub_left_speed = nh.subscribe(TOPIC_LEFT_SPEED,1,left_speed_callback);
@@ -236,6 +222,8 @@ int main (int argc, char **argv)
         ros::Subscriber sub_imu = nh.subscribe(TOPIC_IMU,1,imu_callback);
         ros::Subscriber sub_imu_raw = nh.subscribe(TOPIC_IMU_RAW,1,imu_raw_callback);
         ros::Subscriber sub_mag = nh.subscribe(TOPIC_MAG,1,mag_callback);
+
+
 
         ros::spin();
 }

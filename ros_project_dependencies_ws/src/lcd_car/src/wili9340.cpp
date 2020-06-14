@@ -436,9 +436,7 @@ void lcdInversionOn(void)
 void lcdFillScreen(struct LcdWindow* windowHandle,uint16_t color)
 {
         if (!windowHandle) return;
-        //lcdDrawFillRect(windowHandle,0, 0, _width-1, _height-1, color);
-lcdDrawFillRect(windowHandle,0, 0, windowHandle->width-1, windowHandle->height-1, color);
-
+        lcdDrawFillRect(windowHandle,0, 0, _width-1, _height-1, color);
 }
 
 // Draw line
@@ -789,7 +787,7 @@ int lcdDrawSJISChar(struct LcdWindow* windowHandle,FontxFile *fx, uint16_t x,uin
                 x1 = x;
                 y1 = y + (pw-1);
         }
-        //if (_FONT_FILL_) lcdDrawFillRect(windowHandle,x0, y0, x1, y1, _FONT_FILL_COLOR_);
+        if (_FONT_FILL_) lcdDrawFillRect(windowHandle,x0, y0, x1, y1, _FONT_FILL_COLOR_);
 
         int bits;
         if(_DEBUG_) printf("xss=%d yss=%d\n",xss,yss);
@@ -810,7 +808,7 @@ int lcdDrawSJISChar(struct LcdWindow* windowHandle,FontxFile *fx, uint16_t x,uin
                                 if (fonts[ofs] & mask) {
                                         lcdDrawPixel(windowHandle,xx,yy,color);
                                 } else {
-                                        if (_FONT_FILL_) lcdDrawPixel(windowHandle, xx,yy,_FONT_FILL_COLOR_);
+                                        //if (_FONT_FILL_) lcdDrawPixel(xx,yy,_FONT_FILL_COLOR_);
                                 }
                                 if (h == (ph-2) && _FONT_UNDER_LINE_)
                                         lcdDrawPixel(windowHandle,xx,yy,_FONT_UNDER_LINE_COLOR_);
