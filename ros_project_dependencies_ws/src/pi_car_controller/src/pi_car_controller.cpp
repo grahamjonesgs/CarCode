@@ -167,21 +167,21 @@ void scan_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
         bool _front_block=false;
         bool _back_block=false;
 
-        for (int i=170; 190; i++) {
+        for (int i=170; i<190; i++) {
                 if (msg->ranges[i]<0.3) {
                         _back_block=true;
                         status_msg.data="Back block";
                         msg_pub.publish(status_msg);
                 }
         }
-        for (int i=0; 10; i++) {
+        for (int i=0; i<10; i++) {
                 if (msg->ranges[i]<0.3) {
                         _front_block=true;
                         status_msg.data="Front block";
                         msg_pub.publish(status_msg);
                 }
         }
-        for (int i=350; 359; i++) {
+        for (int i=350; i<359; i++) {
                 if (msg->ranges[i]<0.3) {
                         _front_block=true;
                         status_msg.data="Front block";
