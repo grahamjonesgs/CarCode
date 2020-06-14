@@ -55,6 +55,8 @@
 #define SPEED_TIMOUT 0.5      // Sets frequency of speed check and report
 #define LED_FLASH_TIMER 1
 #define SPEED_MULTIPLIER 0.0105  // (1/20)*0.21 - divide by number of slots, multipy by curcumference
+#define MIN_DISTANCE 0.3
+#define BACK_EXTRA_DISTANCE 0.13
 
 // Topics
 #define TOPIC_CMD_VEL "cmd_vel"
@@ -162,35 +164,35 @@ void scan_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
         // ROS callback on message received
         char message[256];
-        float min=999.0;
-        int pos=0;
-        bool _front_block=false;
-        bool _back_block=false;
+        char segment_status[]="00000000";
 
-        for (int i=170; i<190; i++) {
-                if (msg->ranges[i]<0.3) {
-                        _back_block=true;
-                        status_msg.data="Back block";
-                        msg_pub.publish(status_msg);
-                }
-        }
-        for (int i=0; i<10; i++) {
-                if (msg->ranges[i]<0.3) {
-                        _front_block=true;
-                        status_msg.data="Front block";
-                        msg_pub.publish(status_msg);
-                }
-        }
-        for (int i=350; i<359; i++) {
-                if (msg->ranges[i]<0.3) {
-                        _front_block=true;
-                        status_msg.data="Front block";
-                        msg_pub.publish(status_msg);
+        // Checking for obsticals. Octagon turned 22.5 degrees 0 is back, 4 is front
+        // The sides of the front are 3 and 5.
+        // The sides of the back are 1 and 7.
+        // LIDAR is towards the front by 10cm. So checking is extra for 0<i<90 and 270<i<359
+        for (int i=0; i<360; i++) {
+                if (msg->ranges[i]<((i>90&&i<270) ? MIN_DISTANCE:(MIN_DISTANCE+BACK_EXTRA_DISTANCE))) {
+                //if (msg->ranges[i]<0.3) {
+                        segment_status[((int)((i+22)/45)%8)]='1';
                 }
         }
 
-        front_block=_front_block;
-        back_block=_back_block;
+        if(segment_status[4]=='1'||(segment_status[3]=='1'&&segment_status[5]=='1')){
+          front_block=1;
+        }
+        else {
+          front_block=0;
+        }
+        if(segment_status[0]=='1'||(segment_status[1]=='1'&&segment_status[7]=='1')){
+          back_block=1;
+        }
+        else {
+          back_block=0;
+        }
+
+        snprintf(message,sizeof(message),"%s F%i B%i",segment_status,front_block,back_block);
+        status_msg.data=message;
+        msg_pub.publish(status_msg);
 
         if (front_block&&(current_speed>0)) motor_control(0.0,0.0);
         if (back_block&&(current_speed<0)) motor_control(0.0,0.0);
