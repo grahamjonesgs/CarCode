@@ -61,11 +61,11 @@
 #define BLUE_LED_PIN 24
 
 // Hardware PWM frequency
-#define MAX_SPEED_FREQ 2000
-#define MESSAGE_TIMOUT 0.5    // Time to stop if no message received
+#define MAX_SPEED_FREQ 24000
+#define MESSAGE_TIMOUT 1    // Time to stop if no message received
 #define ODOM_TIMOUT 0.5      // Sets frequency of speed check and report
 #define LED_FLASH_TIMER 1
-#define SUB_STEPS 4
+#define SUB_STEPS 32
 #define STEPS_PER_REVOLUTION 200
 #define M_PER_REVOLUTION 0.21
 #define WHEEL_SEPARATION 0.25
@@ -99,8 +99,8 @@ double theta = 0.0;
 bool left_forwards=true;
 bool right_forwards=true;
 
-int last_left_velocity=0;
-int last_right_velocity=0;
+float last_left_velocity=0;
+float last_right_velocity=0;
 
 int sub_steps=SUB_STEPS;
 int max_speed_freq=MAX_SPEED_FREQ;
@@ -137,6 +137,7 @@ void motor_control(float speed, float turn){
         // Possitive turn clockwise - slower right
         float left_velocity;
         float right_velocity;
+        ROS_INFO("In motor control");
 
         if(speed<-1||speed>1) return;  // Ignore invalid values
         if(turn<-1||turn>1) return;    // Ignore invalid values
@@ -155,35 +156,41 @@ void motor_control(float speed, float turn){
                         right_velocity=speed*(1-turn);
                 }
         }
-        if(left_velocity!=0||right_velocity!=0) {
-                ROS_INFO("left_in=%f, right_in=%f",left_velocity,right_velocity);
-        }
+
+        ROS_INFO("left_in=%f, right_in=%f",left_velocity,right_velocity);
 
         if ((speed==0 && turn==0)) {
-                hardware_PWM(pi,LEFT_FRONT_STEP_PIN,0,1e6*0.5);
-                hardware_PWM(pi,LEFT_BACK_STEP_PIN,0,1e6*0.5);
-                hardware_PWM(pi,RIGHT_FRONT_STEP_PIN,0,1e6*0.5);
-                hardware_PWM(pi,RIGHT_BACK_STEP_PIN,0,1e6*0.5);
+                hardware_PWM(pi,LEFT_FRONT_STEP_PIN,0,0);
+                hardware_PWM(pi,LEFT_BACK_STEP_PIN,0,0);
+                hardware_PWM(pi,RIGHT_FRONT_STEP_PIN,0,0);
+                hardware_PWM(pi,RIGHT_BACK_STEP_PIN,0,0);
         }
         else {
 
                 if (last_left_velocity!=left_velocity) {
-                        hardware_PWM(pi,LEFT_FRONT_STEP_PIN,max_speed_freq*abs(left_velocity),1e6*0.5);
-                        hardware_PWM(pi,LEFT_BACK_STEP_PIN,max_speed_freq*abs(left_velocity),1e6*0.5);
+
                         gpio_write(pi,LEFT_FRONT_DIR_PIN,  (left_velocity < 0) ? PI_LOW : PI_HIGH);
                         gpio_write(pi,LEFT_BACK_DIR_PIN,  (left_velocity < 0) ? PI_LOW : PI_HIGH);
-                        last_left_velocity=left_velocity;
+                        hardware_PWM(pi,LEFT_FRONT_STEP_PIN,max_speed_freq*abs(left_velocity),1e6*0.5);
+                        hardware_PWM(pi,LEFT_BACK_STEP_PIN,max_speed_freq*abs(left_velocity),1e6*0.5);
                 }
                 if(last_right_velocity!=right_velocity) {
+                        ROS_INFO("New right velocity old %f, new %f", last_right_velocity,right_velocity);
+
+                        gpio_write(pi,RIGHT_FRONT_DIR_PIN,  (right_velocity > 0) ? PI_LOW : PI_HIGH);
+                        gpio_write(pi,RIGHT_BACK_DIR_PIN,  (right_velocity > 0) ? PI_LOW : PI_HIGH);
                         hardware_PWM(pi,RIGHT_FRONT_STEP_PIN,max_speed_freq*abs(right_velocity),1e6*0.5);
                         hardware_PWM(pi,RIGHT_BACK_STEP_PIN,max_speed_freq*abs(right_velocity),1e6*0.5);
-                        gpio_write(pi,RIGHT_FRONT_DIR_PIN,  (right_velocity < 0) ? PI_HIGH : PI_LOW);
-                        gpio_write(pi,RIGHT_BACK_DIR_PIN,  (right_velocity < 0) ? PI_HIGH : PI_LOW);
-                        last_right_velocity=right_velocity;
+
+                }
+                else {
+                        ROS_INFO("old right velocity");
                 }
         }
         left_forwards=(left_velocity>=0) ? 1 : 0;
         right_forwards=(right_velocity>=0) ? 1 : 0;
+        last_left_velocity=left_velocity;
+        last_right_velocity=right_velocity;
 
 }
 
@@ -298,12 +305,14 @@ void velocity_callback(const geometry_msgs::Twist::ConstPtr& msg)
 void steps_callback(const std_msgs::Int32::ConstPtr& msg)
 {
         // ROS callback on message received
+        ROS_INFO("Setting to %i steps",msg->data);
         set_substep(msg->data);
 }
 
 void freq_callback(const std_msgs::Int32::ConstPtr& msg)
 {
         // ROS callback on message received
+        ROS_INFO("Setting freq to %iHz",msg->data);
         max_speed_freq=msg->data;
 }
 
@@ -328,14 +337,14 @@ int main (int argc, char **argv)
         signal(SIGTERM, sigintHandler);
         signal(SIGKILL, sigintHandler);
         if (pi=pigpio_start(NULL,NULL)<0) {
-                ROS_INFO("gpio inti failed");
+                ROS_INFO("gpio init failed");
                 return 1;
         }
 
         set_mode(pi,LEFT_FRONT_STEP_PIN,  PI_OUTPUT);
         set_mode(pi,LEFT_BACK_STEP_PIN,  PI_OUTPUT);
         set_mode(pi,RIGHT_FRONT_STEP_PIN,  PI_OUTPUT);
-        set_mode(pi,RIGHT_FRONT_STEP_PIN,  PI_OUTPUT);
+        set_mode(pi,RIGHT_BACK_STEP_PIN,  PI_OUTPUT);
         set_mode(pi,LEFT_FRONT_DIR_PIN,  PI_OUTPUT);
         set_mode(pi,LEFT_BACK_DIR_PIN,  PI_OUTPUT);
         set_mode(pi,RIGHT_FRONT_DIR_PIN,  PI_OUTPUT);
