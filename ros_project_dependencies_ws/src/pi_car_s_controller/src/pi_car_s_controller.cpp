@@ -60,16 +60,21 @@
 #define RED_LED_PIN 23
 #define BLUE_LED_PIN 24
 
-// Hardware PWM frequency
+// Hardware PWM frequency and constants
 #define MAX_SPEED_FREQ 24000
-#define MESSAGE_TIMOUT 1    // Time to stop if no message received
-#define ODOM_TIMOUT 0.5      // Sets frequency of speed check and report
+#define MESSAGE_TIMOUT 0.1    // Time to stop if no message received
+#define ODOM_TIMOUT 0.1      // Sets frequency of speed check and report
 #define LED_FLASH_TIMER 1
 #define SUB_STEPS 32
 #define STEPS_PER_REVOLUTION 200
 #define M_PER_REVOLUTION 0.21
-#define WHEEL_SEPARATION 0.25
+#define WHEEL_SEPARATION 0.2337 //0.25 * 360 / 385
 #define PI 3.1415926
+
+// Motor Modes
+#define MODE_CONINUOUS 1
+#define MODE_AUTO 2
+#define MODE_360 3
 
 // Topics
 #define TOPIC_CMD_VEL "cmd_vel"
@@ -79,6 +84,7 @@
 #define TOPIC_ANGLE "angle"
 #define TOPIC_STEPS "motor_steps"
 #define TOPIC_FREQ "motor_max_freq"
+#define TOPIC_MODE "motor_mode"
 
 // Global variables
 ros::Timer message_timeout;    // Timer for stop motors if no message
@@ -91,6 +97,7 @@ int pi;                        // Pi ID from Pigpio
 int left_step_count=0;        // Count of edges on PWM
 int right_step_count=0;       // Count of edges on PWM
 bool motor_on=false;           // start in safe mode
+int motor_mode = MODE_AUTO;
 
 double x_pos = 0.0;
 double y_pos = 0.0;
@@ -104,6 +111,8 @@ float last_right_velocity=0;
 
 int sub_steps=SUB_STEPS;
 int max_speed_freq=MAX_SPEED_FREQ;
+int target_angle;
+int current_angle;
 
 void sigintHandler(int sig) {
         // Shuting down, turn off blue LED and all motors and PWM
@@ -146,6 +155,9 @@ void motor_control(float speed, float turn){
                 right_velocity=-turn;
         }
         else {
+                if(motor_mode==MODE_360) {
+                        target_angle=current_angle;
+                }
                 if (turn < 0) {
                         left_velocity=speed*(1-turn);
                         right_velocity=speed;
@@ -157,8 +169,6 @@ void motor_control(float speed, float turn){
                 }
         }
 
-        ROS_INFO("left_in=%f, right_in=%f",left_velocity,right_velocity);
-
         if ((speed==0 && turn==0)) {
                 hardware_PWM(pi,LEFT_FRONT_STEP_PIN,0,0);
                 hardware_PWM(pi,LEFT_BACK_STEP_PIN,0,0);
@@ -168,36 +178,31 @@ void motor_control(float speed, float turn){
         else {
 
                 if (last_left_velocity!=left_velocity) {
-
                         gpio_write(pi,LEFT_FRONT_DIR_PIN,  (left_velocity < 0) ? PI_LOW : PI_HIGH);
                         gpio_write(pi,LEFT_BACK_DIR_PIN,  (left_velocity < 0) ? PI_LOW : PI_HIGH);
                         hardware_PWM(pi,LEFT_FRONT_STEP_PIN,max_speed_freq*abs(left_velocity),1e6*0.5);
                         hardware_PWM(pi,LEFT_BACK_STEP_PIN,max_speed_freq*abs(left_velocity),1e6*0.5);
                 }
                 if(last_right_velocity!=right_velocity) {
-                        ROS_INFO("New right velocity old %f, new %f", last_right_velocity,right_velocity);
-
                         gpio_write(pi,RIGHT_FRONT_DIR_PIN,  (right_velocity > 0) ? PI_LOW : PI_HIGH);
                         gpio_write(pi,RIGHT_BACK_DIR_PIN,  (right_velocity > 0) ? PI_LOW : PI_HIGH);
                         hardware_PWM(pi,RIGHT_FRONT_STEP_PIN,max_speed_freq*abs(right_velocity),1e6*0.5);
                         hardware_PWM(pi,RIGHT_BACK_STEP_PIN,max_speed_freq*abs(right_velocity),1e6*0.5);
-
-                }
-                else {
-                        ROS_INFO("old right velocity");
                 }
         }
         left_forwards=(left_velocity>=0) ? 1 : 0;
         right_forwards=(right_velocity>=0) ? 1 : 0;
         last_left_velocity=left_velocity;
         last_right_velocity=right_velocity;
-
 }
 
 void message_timeout_callback (const ros::TimerEvent&){
         // ROS callback if not message received to stop motors
-        //gpio_write(pi,ENABLE_PIN,PI_HIGH);  // Disable drive
-        motor_control(0.0,0.0);
+        if((last_left_velocity!=0||last_right_velocity!=0)&&motor_mode==MODE_AUTO) {
+                motor_control(0.0,0.0);
+                message_timeout.setPeriod(ros::Duration(MESSAGE_TIMOUT),true);    // reset no message timeout
+                ROS_INFO("Timeout");
+        }
 }
 
 void LED_timer_callback (const ros::TimerEvent&){
@@ -252,6 +257,11 @@ void odom_timer_callback (const ros::TimerEvent&){
                 theta+= 2*PI;
         }
         angle.data = 180*theta/PI;  // Send angle in degrees
+        current_angle=(int)angle.data;
+        if (current_angle==target_angle&&motor_mode==MODE_360&&(last_left_velocity!=0||last_right_velocity!=0)) {
+                ROS_INFO("Target angle reached");
+                motor_control(0.0,0.0);
+        }
 
         x_delta=cos(theta)*(left_speed.data+right_speed.data)/2; // approx for small angle delta
         y_delta=sin(theta)*(left_speed.data+right_speed.data)/2; // approx for small angle delta
@@ -317,6 +327,28 @@ void freq_callback(const std_msgs::Int32::ConstPtr& msg)
 }
 
 
+void motor_mode_callback(const std_msgs::Int32::ConstPtr& msg)
+{
+        // ROS callback on message received
+        switch (msg->data) {
+        case MODE_AUTO:
+                motor_mode=msg->data;
+                ROS_INFO("Set to auto mode");
+                break;
+        case MODE_CONINUOUS:
+                motor_mode=msg->data;
+                ROS_INFO("Set to continuous mode");
+                break;
+        case MODE_360:
+                motor_mode=msg->data;
+                ROS_INFO("Set to 360 mode");
+                break;
+        default:
+                ROS_INFO("Invalid mode received %i",msg->data);
+                break;
+        }
+}
+
 void motor_callback(const std_msgs::Bool::ConstPtr& msg)
 {
         // ROS callback on message received
@@ -360,8 +392,9 @@ int main (int argc, char **argv)
         gpio_write(pi,BLUE_LED_PIN,PI_HIGH);
 
         // Set up ROS
-        ros::Subscriber sub_velocity = nh.subscribe(TOPIC_CMD_VEL,1,velocity_callback);
+        ros::Subscriber sub_velocity = nh.subscribe(TOPIC_CMD_VEL,2,velocity_callback);
         ros::Subscriber sub_motor = nh.subscribe(TOPIC_MOTOR,1,motor_callback);
+        ros::Subscriber sub_motor_mode = nh.subscribe(TOPIC_MODE,1,motor_mode_callback);
         ros::Subscriber sub_set_steps = nh.subscribe(TOPIC_STEPS,1,steps_callback);
         ros::Subscriber sub_set_freq = nh.subscribe(TOPIC_FREQ,1,freq_callback);
         message_timeout = nh.createTimer(ros::Duration(MESSAGE_TIMOUT), message_timeout_callback);
