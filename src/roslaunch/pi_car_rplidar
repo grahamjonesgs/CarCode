@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/pi/src/roslaunch/ros_source
+source /home/pi/catkin_ws/devel/setup.bash
 roslaunch rplidar_ros rplidar.launch  
 #PID=$!
 #wait “$PID”

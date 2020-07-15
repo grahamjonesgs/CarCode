@@ -3,24 +3,24 @@
 
    Func     Colour  GPIO  pin	pin  GPIO	Colour	Func
    IMU Vcc  Brown   3V3   1	  2     5v
-   IMU SDA          2     3   4     5v
-   IMU SCL          3     5   6     GND
-                    4	    7	  8     14
-   IMU GND          GND   9	  1     15
-                    17    11	12    18  RB STEP (Z)
-                    27    13  14	  GND LED GND
-                    22	  15	16	  23  LED Red
-                    3V3	  17	18	  24  LED Blue
+   IMU SDA          2     3   4     5v   5v to board
+   IMU SCL          3     5   6     GND  GND to board
+                    4	    7	  8     14   ENABLE
+   IMU GND          GND   9	  10    15   RF DIR (A) xxxxxx
+                    17    11	12    18   RF STEP (A)
+                    27    13  14	  GND  LED GND
+                    22	  15	16	  23   LED Red
+                    3V3	  17	18	  24   LED Blue
    M0 SUBSTEP       10	  19	20	  GND
    M1 SUBSTEP       9	    21	22	  25
    M2 SUBSTEP       11	  23	24	  8
-                    GND   25	26	  7   ENABLE
+                    GND   25	26	  7
                     0	    27	28	  1
    SW YELLOW        5	    29	30	  GND
-   LF DIR	(Y)       6	    31	32	  12  RF STEP (A)
+   LF DIR	(Y)       6	    31	32	  12   RB STEP (Z)
    LF STEP (Y)      13    33	34	  GND
-   LB STEP (X)      19    35	36	  16  RF DIR (A)
-   LB DIR (X)	      26	  37	38	  20  RB DIR (Z)
+   LB STEP (X)      19    35	36	  16   RB DIR (Z) xxxx
+   LB DIR (X)	      26	  37	38	  20
                     GND   39	40	  21
 
                   Bottom Camera Port
@@ -42,14 +42,14 @@
 // Pin definition
 #define LEFT_FRONT_STEP_PIN 13  //Y Controller
 #define LEFT_BACK_STEP_PIN 19   //X Controller
-#define RIGHT_FRONT_STEP_PIN 12 //A Controller
-#define RIGHT_BACK_STEP_PIN 18  //Z Controller
+#define RIGHT_FRONT_STEP_PIN 18 //A Controller
+#define RIGHT_BACK_STEP_PIN 12  //Z Controller
 
 #define LEFT_FRONT_DIR_PIN 6
 #define LEFT_BACK_DIR_PIN 26
-#define RIGHT_FRONT_DIR_PIN 16
-#define RIGHT_BACK_DIR_PIN 20
-#define ENABLE_PIN 7
+#define RIGHT_FRONT_DIR_PIN 15
+#define RIGHT_BACK_DIR_PIN 16
+#define ENABLE_PIN 14
 
 #define M0_SUBSTEP 10
 #define M1_SUBSTEP 9
@@ -62,7 +62,7 @@
 
 // Hardware PWM frequency and constants
 #define MAX_SPEED_FREQ 24000
-#define MESSAGE_TIMOUT 0.1    // Time to stop if no message received
+#define MESSAGE_TIMOUT 0.2    // Time to stop if no message received
 #define ODOM_TIMOUT 0.1      // Sets frequency of speed check and report
 #define LED_FLASH_TIMER 1
 #define SUB_STEPS 32
@@ -70,6 +70,7 @@
 #define M_PER_REVOLUTION 0.21
 #define WHEEL_SEPARATION 0.2337 //0.25 * 360 / 385
 #define PI 3.1415926
+#define ANGLE_DELTA 3
 
 // Motor Modes
 #define MODE_CONINUOUS 1
@@ -111,8 +112,10 @@ float last_right_velocity=0;
 
 int sub_steps=SUB_STEPS;
 int max_speed_freq=MAX_SPEED_FREQ;
-int target_angle;
-int current_angle;
+float target_angle;
+float current_angle;
+float angle_delta=ANGLE_DELTA;  // Aloowable angle deviance for defined turn
+bool turn_started=false;         // Check if the turn has started to avoid immediate stop
 
 void sigintHandler(int sig) {
         // Shuting down, turn off blue LED and all motors and PWM
@@ -146,7 +149,7 @@ void motor_control(float speed, float turn){
         // Possitive turn clockwise - slower right
         float left_velocity;
         float right_velocity;
-        ROS_INFO("In motor control");
+        ROS_INFO("In motor control, speed %f, turn %f", speed, turn);
 
         if(speed<-1||speed>1) return;  // Ignore invalid values
         if(turn<-1||turn>1) return;    // Ignore invalid values
@@ -157,18 +160,19 @@ void motor_control(float speed, float turn){
         else {
                 if(motor_mode==MODE_360) {
                         target_angle=current_angle;
+                        turn_started=false;
                 }
                 if (turn < 0) {
                         left_velocity=speed*(1-turn);
-                        right_velocity=speed;
+                        right_velocity=speed*(1+turn);
 
                 }
                 else {
-                        left_velocity=speed;
-                        right_velocity=speed*(1-turn);
+                        left_velocity=speed*(1-turn);
+                        right_velocity=speed*(1+turn);
                 }
         }
-
+        ROS_INFO("Left v %f, right speed %f", left_velocity,right_velocity);
         if ((speed==0 && turn==0)) {
                 hardware_PWM(pi,LEFT_FRONT_STEP_PIN,0,0);
                 hardware_PWM(pi,LEFT_BACK_STEP_PIN,0,0);
@@ -257,8 +261,13 @@ void odom_timer_callback (const ros::TimerEvent&){
                 theta+= 2*PI;
         }
         angle.data = 180*theta/PI;  // Send angle in degrees
-        current_angle=(int)angle.data;
-        if (current_angle==target_angle&&motor_mode==MODE_360&&(last_left_velocity!=0||last_right_velocity!=0)) {
+        current_angle=angle.data;
+        if (abs((current_angle-target_angle)>angle_delta)&&(turn_started==false)){
+          turn_started=true;
+          ROS_INFO("Turn started set to true");
+        }
+
+        if (turn_started&&abs(current_angle-target_angle)<angle_delta&&motor_mode==MODE_360&&(last_left_velocity!=0||last_right_velocity!=0)) {
                 ROS_INFO("Target angle reached");
                 motor_control(0.0,0.0);
         }

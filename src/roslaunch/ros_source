@@ -4,6 +4,7 @@ source /home/pi/catkin_ws/devel/setup.bash
 source /home/pi/ros_project_dependencies_ws/devel/setup.bash 
 export ROS_MASTER_URI=http://192.168.178.61:11311
 full_ip=$(hostname -I)
-ip4=${full_ip:0:15}
-export ROS_IP=$ip4
+ip4=${froull_ip:0:15}
+#export ROS_IP=$ip4
+export ROS_IP=192.168.178.53
 export ROS_HOME=/home/pi/.ros

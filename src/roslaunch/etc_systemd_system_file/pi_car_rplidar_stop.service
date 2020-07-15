@@ -1,6 +1,6 @@
 [Unit]
 Requires=pigpiod.service
-After=pipgiod.service NetworkManager.service time-sync.target roscore.service pi_car_rplidar.service
+After=network-online.target pipgiod.service NetworkManager.service time-sync.target roscore.service pi_car_rplidar.service
 [Service]
 Type=oneshot
 User=pi                         

@@ -1,7 +1,8 @@
 [Unit]
 Requires=pigpiod.service
-After=pipgiod.service NetworkManager.service time-sync.target roscore.service
+After=network-online.target pipgiod.service NetworkManager.service time-sync.target roscore.service
 [Service]
+ExecStartPre=/bin/sh -c 'until ping -c1 google.com; do sleep 1; done;'
 Type=simple
 User=pi                         
 ExecStart=/home/pi/src/roslaunch/pi_car_imu

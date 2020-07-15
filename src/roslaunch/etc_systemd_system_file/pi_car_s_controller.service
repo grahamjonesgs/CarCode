@@ -1,11 +1,12 @@
 [Unit]
 Requires=pigpiod.service
 After=network-online.target pipgiod.service NetworkManager.service time-sync.target roscore.service
+Wants=network-online.target
 [Service]
 ExecStartPre=/bin/sh -c 'until ping -c1 google.com; do sleep 1; done;'
 Type=simple
 User=pi                         
-ExecStart=/home/pi/src/roslaunch/pi_car_controller
+ExecStart=/home/pi/src/roslaunch/pi_car_s_controller
 [Install]
 WantedBy=multi-user.target
 
