@@ -1,0 +1,9 @@
+digraph G {
+"odom" -> "imu_link"[label="Broadcaster: /ImuFilter\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1588534290.771 sec old)\nBuffer length: 0.000 sec\n"];
+"imu_link" -> "base_link"[label="Broadcaster: /static_transform_publisher_1588534276655296917\nAverage rate: 19.642 Hz\nMost recent transform: 1588534290.805 ( -0.034 sec old)\nBuffer length: 4.938 sec\n"];
+"base_link" -> "laser"[label="Broadcaster: /robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1588534290.771 sec old)\nBuffer length: 0.000 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1588534290.771"[ shape=plaintext ] ;
+ }->"odom";
+}
